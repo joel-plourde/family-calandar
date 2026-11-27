@@ -4,6 +4,7 @@ grant usage on schema family_private to service_role;
 create table family_private.invitation (
   singleton boolean primary key default true check(singleton),
   token_hash bytea not null,
+  short_token_hash bytea,
   expires_at timestamptz not null
 );
 create table family_private.reservation (
@@ -30,8 +31,8 @@ declare
   v_id uuid; v_hits integer; v_bucket timestamptz := date_trunc('minute',now());
   v_rows jsonb;
 begin
-  if p_token is null or p_token !~ '^[0-9a-f]{64}$' or not exists (
-    select 1 from family_private.invitation where token_hash = sha256(convert_to(p_token,'UTF8')) and expires_at > now()
+  if p_token is null or p_token !~ '^([0-9a-f]{64}|[A-Za-z0-9_-]{22})$' or not exists (
+    select 1 from family_private.invitation where (token_hash = sha256(convert_to(p_token,'UTF8')) or short_token_hash = sha256(convert_to(p_token,'UTF8'))) and expires_at > now()
   ) then return jsonb_build_object('error','invalid_invitation','status',403); end if;
   insert into family_private.rate_limit(bucket,hits) values(v_bucket,1)
     on conflict(bucket) do update set hits = family_private.rate_limit.hits + 1
