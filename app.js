@@ -39,12 +39,14 @@ function render(){
   });
 }
 function lock(message, retry=false){opened=false;reservations=[];$("calendar").replaceChildren();$("content").hidden=true;$("locked").hidden=false;$("lockedText").textContent=message;$("retry").hidden=!retry;for(const d of document.querySelectorAll("dialog[open]"))d.close()}
-async function refresh(silent=false){
- if(busy||document.hidden&&silent)return;
+let refreshFeedbackTimer;
+function refreshFeedback(state,text=""){const button=$("refresh");clearTimeout(refreshFeedbackTimer);button.dataset.state=state;$("refreshFeedback").textContent=text;if(state==="done"||state==="error"){refreshFeedbackTimer=setTimeout(()=>{delete button.dataset.state;$("refreshFeedback").textContent="";},2600);}}
+async function refresh(silent=false,manual=false){
+ if(busy||document.hidden&&silent){if(manual)refreshFeedback("working","Actualisation en cours…");return;}
  if(!validToken){lock("Vous devez disposer d’un lien d’invitation valide pour accéder au calendrier.");return}
- busy=true;$("refresh").disabled=true;$("refresh").setAttribute("aria-busy","true");
- try{const data=await api("list");reservations=data.reservations;opened=true;$("locked").hidden=true;$("content").hidden=false;render();markUpdated();showStatus("")}
- catch(err){if(err.message==="invalid_invitation"||!opened)lock(errorText(err),err.message!=="invalid_invitation");else showStatus("Actualisation impossible. Les réservations affichées peuvent ne plus être à jour. "+errorText(err),"warning")}
+ busy=true;if(manual)refreshFeedback("working","Actualisation…");$("refresh").disabled=true;$("refresh").setAttribute("aria-busy","true");
+ try{const data=await api("list");reservations=data.reservations;opened=true;$("locked").hidden=true;$("content").hidden=false;render();markUpdated();showStatus("");if(manual||$("refresh").dataset.state==="working")refreshFeedback("done","Calendrier actualisé")}
+ catch(err){if(manual||$("refresh").dataset.state==="working")refreshFeedback("error","Échec de l’actualisation");if(err.message==="invalid_invitation"||!opened)lock(errorText(err),err.message!=="invalid_invitation");else showStatus("Actualisation impossible. Les réservations affichées peuvent ne plus être à jour. "+errorText(err),"warning")}
  finally{busy=false;$("refresh").disabled=false;$("refresh").removeAttribute("aria-busy")}
 }
 function fillTimes(){
@@ -72,7 +74,7 @@ $("cancelForm").addEventListener("submit",async e=>{
 });
 for(const b of document.querySelectorAll("[data-close]"))b.addEventListener("click",()=>{if(!busy)$(b.dataset.close).close()});
 for(const d of document.querySelectorAll("dialog"))d.addEventListener("cancel",e=>{if(busy)e.preventDefault()});
-$("refresh").addEventListener("click",()=>refresh());
+$("refresh").addEventListener("click",()=>refresh(false,true));
 $("retry").addEventListener("click",()=>refresh());
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&validToken)refresh(true)});
 window.addEventListener("pageshow",e=>{if(e.persisted&&validToken)refresh(true)});
