@@ -1,0 +1,2 @@
+[functions.family-calendar]
+verify_jwt = false
