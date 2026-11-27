@@ -1,8 +1,9 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const endpoint = "https://loegmgugiwekyfisbbqb.supabase.co/functions/v1/family-calendar";
-const token = new URLSearchParams(location.hash.slice(1)).get("invite") || "";
-const validToken = /^[0-9a-f]{64}$/.test(token);
+const fragment = location.hash.slice(1);
+const token = new URLSearchParams(fragment).get("invite") || fragment;
+const validToken = /^(?:[0-9a-f]{64}|[A-Za-z0-9_-]{22})$/.test(token);
 const dates = Array.from({length:28},(_,i)=>new Date(Date.UTC(2027,0,18+i)));
 const iso = d => d.toISOString().slice(0,10);
 const longDate = new Intl.DateTimeFormat("fr-CA",{weekday:"long",day:"numeric",month:"long",timeZone:"UTC"});
