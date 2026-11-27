@@ -16,7 +16,7 @@ The deployed database and function are already configured. The invitation token 
 - All booking data lives in a non-exposed PostgreSQL schema with RLS enabled.
 - Only the Edge Function's service role can execute the reservation RPC.
 - Two slots per date are enforced by a unique constraint and transactional locking.
-- Invitation and cancellation tokens are stored as SHA-256 hashes.
+- The invitation token is stored as a SHA-256 hash. Invited family members can cancel any reservation without a personal code.
 - Invitation expires at midnight Toronto time after February 14, 2027.
 - No account is required. Anyone who obtains the invitation link can use it; share only with the intended group.
 - A shared rate limit applies to authorized API requests. It does not prevent all infrastructure-level abuse.
