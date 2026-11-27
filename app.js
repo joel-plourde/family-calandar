@@ -10,7 +10,7 @@ const shortDate = new Intl.DateTimeFormat("fr-CA",{day:"numeric",month:"short",t
 const hour = n => String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
 const range = r => hour(r.arrival)+" – "+hour(r.departure);
 let reservations=[], chosenDay="", selectedReservation=null, busy=false, opened=false;
-const messages = {invalid_invitation:"Le lien d’invitation est invalide ou expiré.",invalid_input:"Veuillez vérifier les renseignements saisis.",full:"Cette journée est complète. Choisissez une autre date.",invalid_cancel:"Le code d’annulation est incorrect ou la réservation a déjà été annulée.",rate_limit:"Trop de demandes. Réessayez dans une minute.",server_error:"Le service est temporairement indisponible. Réessayez.",network:"Impossible de joindre le service. Vérifiez votre connexion.",forbidden_origin:"Ouvrez le lien officiel dans votre navigateur."};
+const messages = {invalid_invitation:"Le lien d’invitation est invalide ou expiré.",invalid_input:"Veuillez vérifier les renseignements saisis.",full:"Cette journée est complète. Choisissez une autre date.",invalid_cancel:"Cette réservation a déjà été annulée.",rate_limit:"Trop de demandes. Réessayez dans une minute.",server_error:"Le service est temporairement indisponible. Réessayez.",network:"Impossible de joindre le service. Vérifiez votre connexion.",forbidden_origin:"Ouvrez le lien officiel dans votre navigateur."};
 function errorText(err){return messages[err.message] || messages.network}
 async function api(action,payload={}){
   const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,action,payload}),cache:"no-store",referrerPolicy:"no-referrer"});
@@ -48,29 +48,26 @@ function fillTimes(){
 }
 function syncDeparture(){const a=Number($("arrival").value);for(const o of $("departure").options)o.disabled=Number(o.value)<=a;if(Number($("departure").value)<=a)$("departure").value=String(Math.min(a+30,1260))}
 function openBooking(key,date){chosenDay=key;$("chosenDate").textContent=longDate.format(date);$("name").value="";$("arrival").value="480";$("departure").value="540";syncDeparture();$("bookError").textContent="";$("bookingDialog").showModal();$("name").focus()}
-function openCancel(r){selectedReservation=r;$("cancelDetails").textContent=r.name+" · "+longDate.format(new Date(r.day+"T12:00:00Z"))+" · "+range(r);$("codeInput").value="";$("cancelError").textContent="";$("cancelDialog").showModal()}
-function randomHex(n){return Array.from(crypto.getRandomValues(new Uint8Array(n)),v=>v.toString(16).padStart(2,"0")).join("")}
+function openCancel(r){selectedReservation=r;$("cancelDetails").textContent=r.name+" · "+longDate.format(new Date(r.day+"T12:00:00Z"))+" · "+range(r);$("cancelError").textContent="";$("cancelDialog").showModal()}
 fillTimes();$("arrival").options[$("arrival").options.length-1].disabled=true;$("arrival").addEventListener("change",syncDeparture);
 $("bookingForm").addEventListener("submit",async e=>{
  e.preventDefault();if(busy)return;
  const name=$("name").value.trim(),arrival=Number($("arrival").value),departure=Number($("departure").value);
  if(!name||departure<=arrival){$("bookError").textContent=messages.invalid_input;return}
- const code=randomHex(16);busy=true;$("bookSubmit").disabled=true;
- try{const data=await api("book",{day:chosenDay,name,arrival,departure,cancel:code});reservations=data.reservations;render();$("bookingDialog").close();$("cancelCode").textContent=code;$("copyStatus").textContent="";$("successDialog").showModal()}
+ busy=true;$("bookSubmit").disabled=true;
+ try{const data=await api("book",{day:chosenDay,name,arrival,departure});reservations=data.reservations;render();$("bookingDialog").close();$("successDialog").showModal()}
  catch(err){$("bookError").textContent=errorText(err)}
  finally{busy=false;$("bookSubmit").disabled=false}
 });
 $("cancelForm").addEventListener("submit",async e=>{
  e.preventDefault();if(busy||!selectedReservation)return;
- const code=$("codeInput").value.trim().toLowerCase();if(!/^[0-9a-f]{32}$/.test(code)){$("cancelError").textContent=messages.invalid_cancel;return}
  busy=true;$("cancelSubmit").disabled=true;
- try{const data=await api("cancel",{id:selectedReservation.id,cancel:code});reservations=data.reservations;render();$("cancelDialog").close();$("status").textContent="Réservation annulée."}
+ try{const data=await api("cancel",{id:selectedReservation.id});reservations=data.reservations;render();$("cancelDialog").close();$("status").textContent="Réservation annulée."}
  catch(err){$("cancelError").textContent=errorText(err)}
  finally{busy=false;$("cancelSubmit").disabled=false}
 });
 for(const b of document.querySelectorAll("[data-close]"))b.addEventListener("click",()=>{if(!busy)$(b.dataset.close).close()});
 for(const d of document.querySelectorAll("dialog"))d.addEventListener("cancel",e=>{if(busy)e.preventDefault()});
-$("copyCode").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("cancelCode").textContent);$("copyStatus").textContent="Code copié."}catch{$("copyStatus").textContent="Sélectionnez le code pour le copier manuellement."}});
 $("refresh").addEventListener("click",()=>refresh());
 $("retry").addEventListener("click",()=>refresh());
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&opened)refresh(true)});
