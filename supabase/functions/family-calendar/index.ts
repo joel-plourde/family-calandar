@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const raw = await req.text();
     if (raw.length > 4096) return respond({error:"invalid_input"},400);
     const b = JSON.parse(raw);
-    if (!b || typeof b.token !== "string" || !/^[0-9a-f]{64}$/.test(b.token))
+    if (!b || typeof b.token !== "string" || !/^(?:[0-9a-f]{64}|[A-Za-z0-9_-]{22})$/.test(b.token))
       return respond({error:"invalid_invitation"},403);
     if (!["list","book","cancel"].includes(b.action))
       return respond({error:"invalid_input"},400);
